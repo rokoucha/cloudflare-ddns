@@ -7,4 +7,4 @@ OnUnitActiveSec=5min
 Unit=cloudflare-ddns.service
 
 [Install]
-WantedBy=timers.targe
+WantedBy=timers.target
