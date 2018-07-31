@@ -25,7 +25,7 @@ def post_record(zone_name, dns_name, target_type, ip_address):
             record_ip = dns_record['content']
 
             if ip_address==record_ip:
-                print('UNCHANGED: %s %s %s' % (dns_name, target_type, ip_address))
+                print('UNCHANGED: {} -> {} {} {}'.format(zone_name, dns_name, target_type, ip_address))
                 return
 
             # {hostname}.CF_DDNS_SUBDOMAIN.CF_ZONE_NAME(A and AAAA)
@@ -35,7 +35,7 @@ def post_record(zone_name, dns_name, target_type, ip_address):
                 'content': ip_address
             })
 
-            print('UPDATED: %s %s %s -> %s' % (dns_name, target_type, record_ip, ip_address))
+            print('CHANGED: {} -> {} {} {} -> {}'.format(zone_name, dns_name, target_type, record_ip, ip_address))
     else:
         # Create
         cf.zones.dns_records.post(zone_id, data={
@@ -44,7 +44,7 @@ def post_record(zone_name, dns_name, target_type, ip_address):
             'content': ip_address
         })
 
-        print('CREATED: %s %s %s' % (dns_name, target_type, ip_address))
+        print('CREATED: {} -> {} {} {}'.format(zone_name, dns_name, target_type, ip_address))
 
 
 def main():
