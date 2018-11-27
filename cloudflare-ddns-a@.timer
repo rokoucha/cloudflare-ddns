@@ -1,0 +1,10 @@
+[Unit]
+Description=Check my ip address
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=cloudflare-ddns-a@.service
+
+[Install]
+WantedBy=timers.target

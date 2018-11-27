@@ -1,5 +1,6 @@
 from CloudFlare import CloudFlare
-from os import environ, uname
+from argparse import ArgumentParser
+from os import environ
 from requests import exceptions, get
 
 def post_record(zone_name, dns_name, target_type, ip_address):
@@ -48,32 +49,29 @@ def post_record(zone_name, dns_name, target_type, ip_address):
 
 
 def main():
-    zone_name = environ["CF_ZONE_NAME"] 
-    dns_name = '{}.{}'.format(uname()[1], environ["CF_DDNS_SUBDOMAIN"] )
+    parser = ArgumentParser()
+
+    parser.add_argument('-r', '--record', action='store', default='A', help='Record type')
+    parser.add_argument('name', help='DNS Name')
+    args = parser.parse_args()
+
+    zone_name = environ["CF_ZONE_NAME"]
+    dns_name = '{}.{}'.format(args.name, environ["CF_DDNS_SUBDOMAIN"] )
 
     # Get IP Address
-    target_types = []
     try:
         ipv4_address = get('https://v4.ident.me').text
-        target_types.append('A')
     except exceptions.RequestException:
         ipv4_address = ''
     try:
         ipv6_address = get('https://v6.ident.me').text
-        target_types.append('AAAA')
     except exceptions.RequestException:
         ipv6_address = ''
 
+    ip_address = ipv4_address if args.record is 'A' else ipv6_address
+
     # Update record
-    for target_type in target_types:
-        ip_address = ipv4_address if target_type is 'A' else ipv6_address
-        ip_version = 'v4' if target_type is 'A' else 'v6'
-
-        # A and AAAA record
-        post_record(zone_name, dns_name, target_type, ip_address)
-
-        # A or AAAA only record
-        post_record(zone_name, '{}.{}'.format(ip_version,dns_name), target_type, ip_address)
+    post_record(zone_name, dns_name, args.record, ip_address)
 
 if __name__ == '__main__':
     main()
