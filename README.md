@@ -1,7 +1,7 @@
 # cloudflare-ddns
 Add dns query to cloudflare.
 
-DNS name is created by hostname and CF_DDNS_SUBDOMAIN value.
+DNS name is created by arguments and environ:CF_DDNS_SUBDOMAIN value.
 
 ## dependencies
 
@@ -15,5 +15,5 @@ DNS name is created by hostname and CF_DDNS_SUBDOMAIN value.
 Please set environment value before running cloudflare-ddns.py
 
 ```
-$ python cloudflare-ddns.py
+$ python cloudflare-ddns.py [-r [record type (default: A)]] Hostname
 ```
