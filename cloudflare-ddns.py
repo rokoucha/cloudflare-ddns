@@ -68,7 +68,7 @@ def main():
     except exceptions.RequestException:
         ipv6_address = ''
 
-    ip_address = ipv4_address if args.record is 'A' else ipv6_address
+    ip_address = ipv4_address if args.record == 'A' else ipv6_address
 
     # Update record
     post_record(zone_name, dns_name, args.record, ip_address)

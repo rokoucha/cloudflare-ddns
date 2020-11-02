@@ -1,2 +1,2 @@
-cloudflare==2.1.0
+cloudflare==2.8.13
 requests>=2.20.0

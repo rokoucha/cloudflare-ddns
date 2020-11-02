@@ -1,0 +1,21 @@
+[Unit]
+Description = Add %i dns query to cloudflare
+
+[Service]
+TimeoutStartSec=0
+ExecStartPre=-/usr/bin/docker kill cloudflare-ddns_aaaa_%i
+ExecStartPre=-/usr/bin/docker rm cloudflare-ddns_aaaa_%i
+ExecStartPre=/usr/bin/docker build -t cloudflare-ddns .
+ExecStart=/usr/bin/docker run \
+    --env-file . \
+    --name=cloudflare-ddns_aaaa_%i \
+    --net=host \
+    --rm \
+    cloudflare-ddns \
+    -r AAAA \
+    %i
+KillMode=none
+Type=simple
+
+[Install]
+WantedBy = multi-user.target
