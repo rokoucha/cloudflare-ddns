@@ -19,4 +19,4 @@ Type=simple
 WorkingDirectory=%h/services/cloudflare-ddns
 
 [Install]
-WantedBy = multi-user.target
+WantedBy = default.target
