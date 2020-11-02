@@ -4,7 +4,6 @@ Description=Check my ip address
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=5min
-Unit=cloudflare-ddns-aaaa@.service
 
 [Install]
 WantedBy=timers.target
