@@ -2,20 +2,21 @@
 Description = Add %i dns query to cloudflare
 
 [Service]
-TimeoutStartSec=0
-ExecStartPre=-/usr/bin/podman kill cloudflare-ddns_aaaa_%i
-ExecStartPre=-/usr/bin/podman rm cloudflare-ddns_aaaa_%i
-ExecStartPre=/usr/bin/podman build -t cloudflare-ddns .
 ExecStart=/usr/bin/podman run \
-    --env-file . \
-    --name=cloudflare-ddns_aaaa_%i \
+    --env-file .env \
+    --name=%p_%i \
     --net=host \
     --rm \
     cloudflare-ddns \
     -r AAAA \
     %i
+ExecStartPre=-/usr/bin/podman kill %p_%i
+ExecStartPre=-/usr/bin/podman rm %p_%i
+ExecStartPre=/usr/bin/podman build -t cloudflare-ddns .
 KillMode=none
+TimeoutStartSec=0
 Type=simple
+WorkingDirectory=%h/services/cloudflare-ddns
 
 [Install]
 WantedBy = multi-user.target
