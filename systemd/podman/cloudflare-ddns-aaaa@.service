@@ -16,7 +16,7 @@ ExecStartPre=/usr/bin/podman build -t cloudflare-ddns .
 KillMode=none
 TimeoutStartSec=0
 Type=simple
-WorkingDirectory=%h/services/cloudflare-ddns
+WorkingDirectory=%h/pods/cloudflare-ddns
 
 [Install]
 WantedBy = default.target
