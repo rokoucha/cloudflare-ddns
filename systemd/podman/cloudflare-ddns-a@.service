@@ -1,22 +1,31 @@
 [Unit]
-Description = Add %i dns query to cloudflare
+Description = Add A record to %i in Cloudflare
+Wants=network.target
+After=network-online.target
 
 [Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+Restart=on-failure
+TimeoutStopSec=60
+ExecStartPre=/bin/rm -f %t/container-cloudflare-ddns-a_%i.pid %t/container-cloudflare-ddns-a_%i.ctr-id
+ExecStartPre=/usr/bin/podman build -t cloudflare-ddns .
 ExecStart=/usr/bin/podman run \
+    --cgroups=no-conmon \
+    --cidfile %t/container-cloudflare-ddns-a_%i.ctr-id \
+    --conmon-pidfile %t/container-cloudflare-ddns-a_%i.pid \
     --env-file .env \
-    --name=%p_%i \
+    --name=cloudflare-ddns-a_%i \
     --net=host \
+    --replace \
     --rm \
     cloudflare-ddns \
     -r A \
     %i
-ExecStartPre=-/usr/bin/podman kill %p_%i
-ExecStartPre=-/usr/bin/podman rm %p_%i
-ExecStartPre=/usr/bin/podman build -t cloudflare-ddns .
-KillMode=none
-TimeoutStartSec=0
+ExecStop=/usr/bin/podman stop --ignore --cidfile %t/container-cloudflare-ddns-a_%i.ctr-id -t 10
+ExecStopPost=/usr/bin/podman rm --ignore -f --cidfile %t/container-cloudflare-ddns-a_%i.ctr-id
+PIDFile=%t/container-cloudflare-ddns-a_%i.pid
 Type=simple
 WorkingDirectory=%h/pods/cloudflare-ddns
 
 [Install]
-WantedBy = default.target
+WantedBy=multi-user.target default.target
