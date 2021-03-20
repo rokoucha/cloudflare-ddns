@@ -2,8 +2,8 @@
 Description=Check my ip address
 
 [Timer]
-OnBootSec=1min
-OnUnitActiveSec=5min
+OnBootSec=1m
+OnUnitActiveSec=1h
 
 [Install]
 WantedBy=timers.target
