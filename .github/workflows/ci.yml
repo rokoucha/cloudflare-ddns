@@ -17,8 +17,7 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: |
-          go mod download
+        run: go mod download
 
       - name: Build
         run: go build -v
@@ -27,6 +26,32 @@ jobs:
         run: go test -v
 
   build:
+    runs-on: ubuntu-22.04
+    needs: check
+    if: ${{ github.ref_name == 'master' }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -o ./cloudflare-ddns
+
+      - name: Upload Go test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: cloudflare-ddns for Linux
+          path: cloudflare-ddns
+
+  build-docker:
     runs-on: ubuntu-22.04
     needs: check
     if: ${{ github.ref_name == 'master' }}
