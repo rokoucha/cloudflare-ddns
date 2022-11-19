@@ -141,7 +141,7 @@ func main() {
 
 				record.Content = addr
 
-				if opts.Dryrun {
+				if !opts.Dryrun {
 					err := api.UpdateDNSRecord(ctx, record.ZoneID, record.ID, *record)
 					if err != nil {
 						log.Fatalln(err)
