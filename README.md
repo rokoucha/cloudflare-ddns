@@ -1,19 +1,23 @@
 # cloudflare-ddns
-Add dns query to cloudflare.
 
-DNS name is created by arguments and environ:CF_DDNS_SUBDOMAIN value.
+Create or Update dns record in cloudflare.
+
+## dev dependencies
+
+- Go
 
 ## dependencies
 
-- Python 3
 - Internet connection(IPv4 or IPv6)
-- CloudFlare accounts
-- `$ pip install -r requirements.txt`
+- Cloudflare accounts
 
-## Run
+## How to build
 
-Please set environment value before running cloudflare-ddns.py
+- `go mod download`
+- `go build`
 
-```
-$ python cloudflare-ddns.py [-r [record type (default: A)]] Hostname
-```
+## License
+
+Copyright (c) 2022 Rokoucha
+
+Released under the MIT license, see LICENSE.

@@ -1,16 +1,26 @@
-FROM python:3.9-buster as builder
+FROM docker.io/library/golang:1.19-bullseye AS build
 
-WORKDIR /opt/app
+WORKDIR /app
 
-COPY requirements.txt /opt/app/requirements.txt
-RUN pip3 install -r requirements.txt
+COPY go.mod /app/go.mod
+COPY go.sum /app/go.sum
+RUN go mod download
 
-FROM python:3.9-slim-buster as runner
+COPY *.go /app/
 
-WORKDIR /opt/app
+RUN go build -o /app/cloudflare-ddns
 
-COPY --from=builder /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+FROM docker.io/library/debian:bullseye-slim
 
-COPY cloudflare-ddns.py /opt/app/cloudflare-ddns.py
+ARG USER_NAME="cloudflare-ddns"
+ARG USER_ID="999"
 
-ENTRYPOINT ["python", "/opt/app/cloudflare-ddns.py"]
+RUN useradd -l -u "${USER_ID}" -m "${USER_NAME}"
+
+WORKDIR /app
+
+COPY --from=build /app/cloudflare-ddns /app/cloudflare-ddns
+
+USER $USER_NAME
+
+ENTRYPOINT ["/app/cloudflare-ddns"]

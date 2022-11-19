@@ -1,9 +1,0 @@
-[Unit]
-Description=Check my ip address
-
-[Timer]
-OnBootSec=1m
-OnUnitActiveSec=1h
-
-[Install]
-WantedBy=timers.target
