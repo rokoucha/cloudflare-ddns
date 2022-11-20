@@ -76,12 +76,13 @@ jobs:
       - name: Build & Push
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: alpine.Dockerfile
-          tags: ghcr.io/rokoucha/cloudflare-ddns:alpine
-          push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          context: .
+          file: alpine.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/rokoucha/cloudflare-ddns:alpine
 
   build-docker-debian:
     runs-on: ubuntu-22.04
@@ -108,9 +109,10 @@ jobs:
       - name: Build & Push
         uses: docker/build-push-action@v3
         with:
-          context: .
-          file: debian.Dockerfile
-          tags: ghcr.io/rokoucha/cloudflare-ddns:latest,ghcr.io/rokoucha/cloudflare-ddns:debian
-          push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          context: .
+          file: debian.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/rokoucha/cloudflare-ddns:latest,ghcr.io/rokoucha/cloudflare-ddns:debian
