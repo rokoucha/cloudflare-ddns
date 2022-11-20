@@ -18,10 +18,9 @@ ARG USER_ID="999"
 RUN useradd -l -u "${USER_ID}" -m "${USER_NAME}"
 
 RUN apt update \
-    && apt full-upgrade -y \
     && apt install -y --no-install-recommends \
-    ca-certificates \
-    openssl
+    ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
