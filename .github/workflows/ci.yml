@@ -29,6 +29,13 @@ jobs:
     runs-on: ubuntu-22.04
     needs: check
     if: ${{ github.ref_name == 'master' }}
+    strategy:
+      matrix:
+        GOARCH: ["amd64", "arm64"]
+        GOOS: ["darwin", "linux", "windows"]
+        include:
+          - GOOS: windows
+            X: .exe
 
     steps:
       - uses: actions/checkout@v3
@@ -43,13 +50,17 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: go build -o ./cloudflare-ddns
+        run: go build -o ./cloudflare-ddns$X
+        env:
+          GOARCH: ${{ matrix.GOARCH }}
+          GOOS: ${{ matrix.GOOS }}
+          X: ${{ matrix.X }}
 
-      - name: Upload Go test results
+      - name: Upload build result
         uses: actions/upload-artifact@v3
         with:
-          name: cloudflare-ddns for Linux
-          path: cloudflare-ddns
+          name: cloudflare-ddns-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
+          path: cloudflare-ddns${{ matrix.X }}
 
   build-docker-alpine:
     runs-on: ubuntu-22.04
