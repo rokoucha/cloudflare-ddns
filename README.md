@@ -6,21 +6,23 @@ Create or Update dns record in cloudflare.
 
 ```
 Usage:
-  cloudflare-ddns [OPTIONS]
+  cloudflare-ddns [OPTIONS] ZONE_NAME
 
 Application Options:
-  -d, --dry-run    dry run
-  -e, --external   Use external global address
-  -n, --hostname=  hostname
-  -i, --interface= interface name
-  -4, --ipv4       Add A record
-  -6, --ipv6       Add AAAA record
-  -p, --prefix=    Prefix
-  -s, --subdomain= Subdomain
+  -d, --dry-run    Don't create or update DNS record
+  -e, --external   Use external address instead of interface address
+  -n, --hostname=  Name to use instead of hostname
+  -i, --interface= Interface to use address
+  -4, --ipv4       Create or update only A record
+  -6, --ipv6       Create or update only AAAA record
+  -p, --prefix=    Prefix of hostname
+  -s, --subdomain= Subdomain name
 
 Help Options:
   -h, --help       Show this help message
 ```
+
+The record name will be of the form `[prefix.]hostname.[subdomain.]ZONE_NAME`.
 
 ## dev dependencies
 
