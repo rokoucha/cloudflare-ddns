@@ -13,7 +13,7 @@ RUN go build -o /app/cloudflare-ddns
 FROM docker.io/library/alpine:3.16
 
 ARG USER_NAME="cloudflare-ddns"
-ARG USER_ID="999"
+ARG USER_ID="998"
 
 RUN adduser -u "${USER_ID}" -D "${USER_NAME}"
 

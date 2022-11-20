@@ -13,7 +13,7 @@ RUN go build -o /app/cloudflare-ddns
 FROM docker.io/library/debian:bullseye-slim
 
 ARG USER_NAME="cloudflare-ddns"
-ARG USER_ID="999"
+ARG USER_ID="998"
 
 RUN useradd -l -u "${USER_ID}" -m "${USER_NAME}"
 
