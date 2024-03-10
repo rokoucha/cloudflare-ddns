@@ -1,0 +1,11 @@
+[Unit]
+Description=Create or Update dns record in cloudflare.
+Wants=network-online.target nss-lookup.target
+After=network-online.target nss-lookup.target
+
+[Service]
+EnvironmentFile=-/etc/default/cloudflare-ddns
+ExecStart=/usr/bin/cloudflare-ddns $OPTS
+
+[Install]
+WantedBy=default.target
