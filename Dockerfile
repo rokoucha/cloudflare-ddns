@@ -7,6 +7,8 @@ COPY go.sum /app/go.sum
 RUN go mod download
 
 COPY *.go /app/
+COPY cf/*.go /app/cf/
+COPY ipaddr/*.go /app/ipaddr/
 
 RUN go build -o /app/cloudflare-ddns
 
