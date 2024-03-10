@@ -31,19 +31,23 @@ jobs:
     if: ${{ github.ref_name == 'master' }}
     strategy:
       matrix:
-        GOARCH: ["amd64", "arm64"]
+        GOARCH: ["amd64", "arm64", "arm"]
         GOOS: ["darwin", "linux", "windows"]
         include:
           - GOOS: windows
             X: .exe
+        exclude: 
+          - GOARCH: arm
+            GOOS: windows
+          - GOARCH: arm
+            GOOS: darwin
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.19
           cache: true
 
       - name: Install dependencies
@@ -57,7 +61,7 @@ jobs:
           X: ${{ matrix.X }}
 
       - name: Upload build result
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cloudflare-ddns-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
           path: cloudflare-ddns${{ matrix.X }}
@@ -69,23 +73,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Push
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           cache-from: type=gha
           cache-to: type=gha,mode=max
