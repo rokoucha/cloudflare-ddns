@@ -4,7 +4,7 @@ Create or Update dns record in cloudflare.
 
 ## How to use
 
-```
+```plain
 Usage:
   cloudflare-ddns [OPTIONS] ZONE_NAME
 
@@ -16,13 +16,13 @@ Application Options:
   -4, --ipv4       Create or update only A record
   -6, --ipv6       Create or update only AAAA record
   -p, --prefix=    Prefix of hostname
-  -s, --subdomain= Subdomain name
+  -s, --suffix=    Suffix of hostname
 
 Help Options:
   -h, --help       Show this help message
 ```
 
-The record name will be of the form `[prefix.]hostname.[subdomain.]ZONE_NAME`.
+The record name will be of the form `[prefix.]hostname.[suffix.]ZONE_NAME`.
 
 ## dev dependencies
 

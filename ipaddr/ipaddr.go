@@ -1,4 +1,4 @@
-package main
+package ipaddr
 
 import (
 	"fmt"
@@ -7,14 +7,38 @@ import (
 	"net/http"
 )
 
-type address struct {
+type Address struct {
 	Address   string
 	Interface string
 	Version   int
 }
 
-func GetIfAddresses() ([]address, error) {
-	addresses := []address{}
+func GetAddress(ip int, external bool, iface string) (string, error) {
+	if external {
+		addr, err := GetExternalAddress(ip)
+		if err != nil {
+			return "", err
+		}
+
+		return addr, nil
+	} else {
+		ifAddrs, err := GetIfAddresses()
+		if err != nil {
+			return "", err
+		}
+
+		for _, ifAddr := range ifAddrs {
+			if ifAddr.Version == ip && (iface == "" || ifAddr.Interface == iface) {
+				return ifAddr.Address, nil
+			}
+		}
+
+		return "", fmt.Errorf("Cannot get address of interface")
+	}
+}
+
+func GetIfAddresses() ([]Address, error) {
+	addresses := []Address{}
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -30,13 +54,13 @@ func GetIfAddresses() ([]address, error) {
 		for _, a := range addrs {
 			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 				if ipnet.IP.To4() != nil {
-					addresses = append(addresses, address{
+					addresses = append(addresses, Address{
 						Address:   ipnet.IP.String(),
 						Interface: i.Name,
 						Version:   4,
 					})
 				} else {
-					addresses = append(addresses, address{
+					addresses = append(addresses, Address{
 						Address:   ipnet.IP.String(),
 						Interface: i.Name,
 						Version:   6,

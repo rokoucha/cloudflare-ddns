@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
-	"github.com/cloudflare/cloudflare-go"
 	"github.com/jessevdk/go-flags"
+	"github.com/rokoucha/cloudflare-ddns/cf"
+	"github.com/rokoucha/cloudflare-ddns/ipaddr"
 	"golang.org/x/exp/slices"
 )
 
@@ -20,7 +21,7 @@ type options struct {
 	IPv4      bool   `short:"4" long:"ipv4" description:"Create or update only A record"`
 	IPv6      bool   `short:"6" long:"ipv6" description:"Create or update only AAAA record"`
 	Prefix    string `short:"p" long:"prefix" description:"Prefix of hostname"`
-	Subdomain string `short:"s" long:"subdomain" description:"Subdomain name"`
+	Suffix    string `short:"s" long:"suffix" description:"Suffix of hostname"`
 	Args      struct {
 		ZONE_NAME string
 	} ` positional-args:"yes" required:"1"`
@@ -28,7 +29,6 @@ type options struct {
 
 func main() {
 	var opts options
-
 	if _, err := flags.Parse(&opts); err != nil {
 		flagsErr := err.(*flags.Error)
 		if flagsErr.Type == flags.ErrHelp {
@@ -37,20 +37,22 @@ func main() {
 		os.Exit(2)
 	}
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	apiToken := os.Getenv("CLOUDFLARE_API_TOKEN")
 	if apiToken == "" {
-		fmt.Fprintln(os.Stderr, "CLOUDFLARE_API_TOKEN is required")
+		logger.Error("CLOUDFLARE_API_TOKEN is required")
 		os.Exit(1)
 	}
 
 	if opts.Dryrun {
-		fmt.Println("Dry-run")
+		logger.Info("Dry-run")
 	}
 
 	if opts.Hostname == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to get hostname")
+			logger.Error("Failed to get hostname", "err", err)
 			os.Exit(1)
 		}
 
@@ -63,23 +65,23 @@ func main() {
 		recordNames = slices.Insert(recordNames, 0, opts.Prefix)
 	}
 
-	if opts.Subdomain != "" {
-		recordNames = slices.Insert(recordNames, len(recordNames)-1, opts.Subdomain)
+	if opts.Suffix != "" {
+		recordNames = slices.Insert(recordNames, len(recordNames)-1, opts.Suffix)
 	}
 
 	recordName := strings.Join(recordNames, ".")
 
-	api, err := cloudflare.NewWithAPIToken(apiToken)
+	c, err := cf.New(cf.Config{APIToken: apiToken})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to login to Cloudflare:", err)
+		logger.Error("Failed to login to cloudflare", "err", err)
 		os.Exit(1)
 	}
 
 	ctx := context.Background()
 
-	zone, err := GetZoneFromName(api, ctx, opts.Args.ZONE_NAME)
+	zoneID, err := c.GetZoneIdByZoneName(ctx, opts.Args.ZONE_NAME)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to get a zone:", err)
+		logger.Error("Failed to get a zone", "err", err)
 		os.Exit(1)
 	}
 
@@ -95,9 +97,9 @@ func main() {
 	}
 
 	for _, ip := range family {
-		addr, err := getAddr(ip, opts.External, opts.Interface)
+		addr, err := ipaddr.GetAddress(ip, opts.External, opts.Interface)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to get an address:", err)
+			logger.Error("Failed to get an address", "err", err)
 			os.Exit(1)
 		}
 
@@ -106,36 +108,35 @@ func main() {
 			recordType = "AAAA"
 		}
 
-		record, err := GetDNSRecordFromNameAndType(api, ctx, zone.ID, recordName, recordType)
-		if err != nil && !errors.Is(err, DNSRecordNotFoundErr) {
-			fmt.Fprintln(os.Stderr, "Failed to get a DNS record:", err)
+		record, err := c.GetDNSRecordFromNameAndType(ctx, zoneID, recordName, recordType)
+		if err != nil && !errors.Is(err, cf.DNSRecordNotFoundErr) {
+			logger.Error("Failed to get a DNS record", "err", err)
 			os.Exit(1)
 		}
 
 		switch {
-		case errors.Is(err, DNSRecordNotFoundErr):
+		case errors.Is(err, cf.DNSRecordNotFoundErr):
 			{
-				record = &cloudflare.DNSRecord{
+				record = &cf.DNSRecord{
 					Type:    recordType,
 					Name:    recordName,
 					Content: addr,
-					ZoneID:  zone.ID,
+					ZoneID:  zoneID,
 				}
 
 				if !opts.Dryrun {
-					resp, err := api.CreateDNSRecord(ctx, zone.ID, *record)
+					record, err = c.CreateDNSRecord(ctx, zoneID, record)
 					if err != nil {
-						fmt.Fprintln(os.Stderr, "Failed to create a DNS record:", err)
+						logger.Error("Failed to create a DNS record", "err", err)
 						os.Exit(1)
 					}
-					record = &resp.Result
 				}
 
-				fmt.Printf("CREATED: %s %s: %s\n", record.Name, record.Type, record.Content)
+				logger.Info("CREATED", "name", record.Name, "type", record.Type, "content", record.Content)
 			}
 		case addr == record.Content:
 			{
-				fmt.Printf("UNCHANGED: %s %s: %s\n", record.Name, record.Type, record.Content)
+				logger.Info("UNCHANGED", "name", record.Name, "type", record.Type, "content", record.Content)
 			}
 		default:
 			{
@@ -144,39 +145,15 @@ func main() {
 				record.Content = addr
 
 				if !opts.Dryrun {
-					err := api.UpdateDNSRecord(ctx, record.ZoneID, record.ID, *record)
+					record, err = c.UpdateDNSRecord(ctx, zoneID, record)
 					if err != nil {
-						fmt.Fprintln(os.Stderr, "Failed to update a DNS record:", err)
+						logger.Error("Failed to update a DNS record", "err", err)
 						os.Exit(1)
 					}
 				}
 
-				fmt.Printf("UPDATED: %s %s: %s => %s\n", record.Name, record.Type, oldAddr, record.Content)
+				logger.Info("UPDATED", "name", record.Name, "type", record.Type, "old", oldAddr, "new", record.Content)
 			}
 		}
-	}
-}
-
-func getAddr(ip int, external bool, iface string) (string, error) {
-	if external {
-		addr, err := GetExternalAddress(ip)
-		if err != nil {
-			return "", err
-		}
-
-		return addr, nil
-	} else {
-		ifAddrs, err := GetIfAddresses()
-		if err != nil {
-			return "", err
-		}
-
-		for _, ifAddr := range ifAddrs {
-			if ifAddr.Version == ip && (iface == "" || ifAddr.Interface == iface) {
-				return ifAddr.Address, nil
-			}
-		}
-
-		return "", fmt.Errorf("Cannot get address of interface")
 	}
 }
