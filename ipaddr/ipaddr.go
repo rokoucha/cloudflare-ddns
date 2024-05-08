@@ -3,6 +3,7 @@ package ipaddr
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 )
@@ -13,21 +14,36 @@ type Address struct {
 	Version   int
 }
 
-func GetAddress(ip int, external bool, iface string) (string, error) {
+type IPAddr struct {
+	logger *slog.Logger
+}
+
+type IPAddrConfig struct {
+	Logger *slog.Logger
+}
+
+func New(config IPAddrConfig) *IPAddr {
+	return &IPAddr{
+		logger: config.Logger,
+	}
+}
+
+func (i *IPAddr) GetAddress(ip int, external bool, iface string) (string, error) {
 	if external {
-		addr, err := GetExternalAddress(ip)
+		addr, err := i.GetExternalAddress(ip)
 		if err != nil {
 			return "", err
 		}
 
 		return addr, nil
 	} else {
-		ifAddrs, err := GetIfAddresses()
+		ifAddrs, err := i.GetIfAddresses()
 		if err != nil {
 			return "", err
 		}
 
-		for _, ifAddr := range ifAddrs {
+		for in, ifAddr := range ifAddrs {
+			i.logger.Debug("GetIfAddresses()", "index", in, "address", ifAddr)
 			if ifAddr.Version == ip && (iface == "" || ifAddr.Interface == iface) {
 				return ifAddr.Address, nil
 			}
@@ -37,43 +53,58 @@ func GetAddress(ip int, external bool, iface string) (string, error) {
 	}
 }
 
-func GetIfAddresses() ([]Address, error) {
-	addresses := []Address{}
+func (i *IPAddr) GetIfAddresses() ([]*Address, error) {
+	publicAddress := []*Address{}
+	privateAddress := []*Address{}
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
+	i.logger.Debug("net.Interfaces()", "interfaces", ifaces)
 
-	for _, i := range ifaces {
-		addrs, err := i.Addrs()
+	for _, in := range ifaces {
+		addrs, err := in.Addrs()
 		if err != nil {
 			return nil, err
 		}
+		i.logger.Debug("interfaces.Addrs()", "interface", in, "addresses", addrs)
 
 		for _, a := range addrs {
 			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 				if ipnet.IP.To4() != nil {
-					addresses = append(addresses, Address{
+					ad := &Address{
 						Address:   ipnet.IP.String(),
-						Interface: i.Name,
+						Interface: in.Name,
 						Version:   4,
-					})
+					}
+					if ipnet.IP.IsPrivate() {
+						privateAddress = append(privateAddress, ad)
+					} else {
+						publicAddress = append(publicAddress, ad)
+					}
 				} else {
-					addresses = append(addresses, Address{
+					ad := &Address{
 						Address:   ipnet.IP.String(),
-						Interface: i.Name,
+						Interface: in.Name,
 						Version:   6,
-					})
+					}
+					if ipnet.IP.IsLinkLocalUnicast() {
+						privateAddress = append(privateAddress, ad)
+					} else {
+						publicAddress = append(publicAddress, ad)
+					}
 				}
 			}
 		}
 	}
 
+	addresses := append(publicAddress, privateAddress...)
+
 	return addresses, nil
 }
 
-func GetExternalAddress(version int) (string, error) {
+func (i *IPAddr) GetExternalAddress(version int) (string, error) {
 	if version != 4 && version != 6 {
 		return "", fmt.Errorf("Invalid IP version: %d", version)
 	}

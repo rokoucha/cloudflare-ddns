@@ -102,8 +102,12 @@ func main() {
 		family = append(family, 4, 6)
 	}
 
+	i := ipaddr.New(ipaddr.IPAddrConfig{
+		Logger: logger,
+	})
+
 	for _, ip := range family {
-		addr, err := ipaddr.GetAddress(ip, opts.External, opts.Interface)
+		addr, err := i.GetAddress(ip, opts.External, opts.Interface)
 		if err != nil {
 			logger.Error("Failed to get an address", "err", err)
 			os.Exit(1)
