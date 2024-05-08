@@ -22,6 +22,7 @@ type options struct {
 	IPv6      bool   `short:"6" long:"ipv6" description:"Create or update only AAAA record"`
 	Prefix    string `short:"p" long:"prefix" description:"Prefix of hostname"`
 	Suffix    string `short:"s" long:"suffix" description:"Suffix of hostname"`
+	Verbose   bool   `short:"v" long:"verbose" description:"Show verbose debug information"`
 	Args      struct {
 		ZONE_NAME string
 	} ` positional-args:"yes" required:"1"`
@@ -37,7 +38,12 @@ func main() {
 		os.Exit(2)
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	level := slog.LevelInfo
+	if opts.Verbose {
+		level = slog.LevelDebug
+	}
+
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 
 	apiToken := os.Getenv("CLOUDFLARE_API_TOKEN")
 	if apiToken == "" {
