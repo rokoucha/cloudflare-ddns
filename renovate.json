@@ -6,5 +6,7 @@
     "helpers:pinGitHubActionDigests",
     "customManagers:githubActionsVersions",
     "customManagers:dockerfileVersions"
-  ]
+  ],
+  "automerge": true,
+  "platformAutomerge": true
 }
