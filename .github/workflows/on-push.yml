@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@95815c38cf14ee0e1db257ec2f16f369c7d6955b # v4.2.1
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           path: dist
           pattern: cloudflare-ddns-${{ needs.version.outputs.version_tag }}-*
