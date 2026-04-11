@@ -1,0 +1,15 @@
+.git
+.github
+.serena
+
+README.md
+LICENSE
+cloudflare-ddns.service
+docker-bake.hcl
+renovate.json
+.editorconfig
+.env.example
+
+cloudflare-ddns
+dist
+tmp

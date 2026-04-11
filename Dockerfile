@@ -1,31 +1,22 @@
+# syntax=docker/dockerfile:1.7
+
 FROM docker.io/library/golang:1.26 AS build
 
-WORKDIR /app
+WORKDIR /src
 
-COPY go.mod /app/go.mod
-COPY go.sum /app/go.sum
-RUN go mod download
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
-COPY *.go /app/
-COPY cf/*.go /app/cf/
-COPY ipaddr/*.go /app/ipaddr/
+COPY . .
 
-RUN go build -o /app/cloudflare-ddns
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux \
+    go build -trimpath -ldflags="-s -w" -o /out/cloudflare-ddns .
 
-FROM docker.io/library/alpine:3.23
+FROM gcr.io/distroless/static-debian12:nonroot
 
-ARG USER_NAME="cloudflare-ddns"
-ARG USER_ID="998"
+COPY --from=build /out/cloudflare-ddns /cloudflare-ddns
 
-RUN adduser -u "${USER_ID}" -D "${USER_NAME}"
-
-RUN apk add --no-cache \
-    openssl ca-certificates
-
-WORKDIR /app
-
-COPY --from=build /app/cloudflare-ddns /app/cloudflare-ddns
-
-USER $USER_NAME
-
-ENTRYPOINT ["/app/cloudflare-ddns"]
+ENTRYPOINT ["/cloudflare-ddns"]
