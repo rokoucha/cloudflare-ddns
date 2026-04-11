@@ -12,7 +12,7 @@ COPY ipaddr/*.go /app/ipaddr/
 
 RUN go build -o /app/cloudflare-ddns
 
-FROM docker.io/library/alpine:3.19
+FROM docker.io/library/alpine:3.23
 
 ARG USER_NAME="cloudflare-ddns"
 ARG USER_ID="998"
