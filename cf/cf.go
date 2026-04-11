@@ -42,7 +42,7 @@ func (c *CF) GetZoneIdByZoneName(ctx context.Context, zoneName string) (string, 
 func (c *CF) GetDNSRecordFromNameAndType(ctx context.Context, zoneID string, name string, recordType string) (*DNSRecord, error) {
 	records, _, err := c.api.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zoneID), cloudflare.ListDNSRecordsParams{Name: name, Type: recordType})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	if len(records) < 1 {

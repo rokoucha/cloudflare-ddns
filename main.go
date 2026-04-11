@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/rokoucha/cloudflare-ddns/cf"
@@ -14,6 +19,7 @@ import (
 )
 
 type options struct {
+	Address   string `short:"a" long:"address" description:"Explicit IP address to register (overrides interface/external detection)" value-name:"ADDRESS"`
 	Dryrun    bool   `short:"d" long:"dry-run" description:"Don't create or update DNS record"`
 	External  bool   `short:"e" long:"external" description:"Use external address instead of interface address"`
 	Hostname  string `short:"n" long:"hostname" description:"Name to use instead of hostname"`
@@ -23,9 +29,80 @@ type options struct {
 	Prefix    string `short:"p" long:"prefix" description:"Prefix of hostname"`
 	Suffix    string `short:"s" long:"suffix" description:"Suffix of hostname"`
 	Verbose   bool   `short:"v" long:"verbose" description:"Show verbose debug information"`
+	Watch     string `short:"w" long:"watch" description:"Run continuously, updating every INTERVAL (e.g. 5m, 1h)" value-name:"INTERVAL"`
 	Args      struct {
 		ZONE_NAME string
 	} ` positional-args:"yes" required:"1"`
+}
+
+func syncOnce(
+	ctx context.Context,
+	logger *slog.Logger,
+	c *cf.CF,
+	i *ipaddr.IPAddr,
+	opts options,
+	zoneID string,
+	recordName string,
+	family []int,
+) error {
+	for _, ip := range family {
+		var addr string
+		if opts.Address != "" {
+			addr = opts.Address
+		} else {
+			var err error
+			addr, err = i.GetAddress(ip, opts.External, opts.Interface)
+			if err != nil {
+				return fmt.Errorf("failed to get address: %w", err)
+			}
+		}
+
+		recordType := "A"
+		if ip == 6 {
+			recordType = "AAAA"
+		}
+
+		record, err := c.GetDNSRecordFromNameAndType(ctx, zoneID, recordName, recordType)
+		if err != nil && !errors.Is(err, cf.DNSRecordNotFoundErr) {
+			return fmt.Errorf("failed to get DNS record: %w", err)
+		}
+
+		switch {
+		case errors.Is(err, cf.DNSRecordNotFoundErr):
+			record = &cf.DNSRecord{
+				Type:    recordType,
+				Name:    recordName,
+				Content: addr,
+			}
+
+			if !opts.Dryrun {
+				record, err = c.CreateDNSRecord(ctx, zoneID, record)
+				if err != nil {
+					return fmt.Errorf("failed to create DNS record: %w", err)
+				}
+			}
+
+			logger.Info("CREATED", "name", record.Name, "type", record.Type, "content", record.Content)
+
+		case addr == record.Content:
+			logger.Info("UNCHANGED", "name", record.Name, "type", record.Type, "content", record.Content)
+
+		default:
+			oldAddr := record.Content
+			record.Content = addr
+
+			if !opts.Dryrun {
+				record, err = c.UpdateDNSRecord(ctx, zoneID, record)
+				if err != nil {
+					return fmt.Errorf("failed to update DNS record: %w", err)
+				}
+			}
+
+			logger.Info("UPDATED", "name", record.Name, "type", record.Type, "old", oldAddr, "new", record.Content)
+		}
+	}
+
+	return nil
 }
 
 func main() {
@@ -102,66 +179,60 @@ func main() {
 		family = append(family, 4, 6)
 	}
 
+	if opts.Address != "" {
+		ip := net.ParseIP(opts.Address)
+		if ip == nil {
+			logger.Error("Invalid --address", "value", opts.Address)
+			os.Exit(1)
+		}
+		addrFamily := 6
+		if ip.To4() != nil {
+			addrFamily = 4
+		}
+		if (addrFamily == 4 && opts.IPv6) || (addrFamily == 6 && opts.IPv4) {
+			logger.Warn("--address family does not match --ipv4/--ipv6 filter, nothing to do")
+			os.Exit(0)
+		}
+		family = []int{addrFamily}
+	}
+
 	i := ipaddr.New(ipaddr.IPAddrConfig{
 		Logger: logger,
 	})
 
-	for _, ip := range family {
-		addr, err := i.GetAddress(ip, opts.External, opts.Interface)
-		if err != nil {
-			logger.Error("Failed to get an address", "err", err)
+	if opts.Watch == "" {
+		if err := syncOnce(ctx, logger, c, i, opts, zoneID, recordName, family); err != nil {
+			logger.Error("Sync failed", "err", err)
 			os.Exit(1)
 		}
+		return
+	}
 
-		recordType := "A"
-		if ip == 6 {
-			recordType = "AAAA"
-		}
+	interval, err := time.ParseDuration(opts.Watch)
+	if err != nil || interval <= 0 {
+		logger.Error("Invalid --watch interval", "value", opts.Watch)
+		os.Exit(2)
+	}
 
-		record, err := c.GetDNSRecordFromNameAndType(ctx, zoneID, recordName, recordType)
-		if err != nil && !errors.Is(err, cf.DNSRecordNotFoundErr) {
-			logger.Error("Failed to get a DNS record", "err", err)
-			os.Exit(1)
-		}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
-		switch {
-		case errors.Is(err, cf.DNSRecordNotFoundErr):
-			{
-				record = &cf.DNSRecord{
-					Type:    recordType,
-					Name:    recordName,
-					Content: addr,
-				}
+	logger.Info("Watch mode started", "interval", interval)
+	if err := syncOnce(ctx, logger, c, i, opts, zoneID, recordName, family); err != nil {
+		logger.Error("Sync failed", "err", err)
+	}
 
-				if !opts.Dryrun {
-					record, err = c.CreateDNSRecord(ctx, zoneID, record)
-					if err != nil {
-						logger.Error("Failed to create a DNS record", "err", err)
-						os.Exit(1)
-					}
-				}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
 
-				logger.Info("CREATED", "name", record.Name, "type", record.Type, "content", record.Content)
-			}
-		case addr == record.Content:
-			{
-				logger.Info("UNCHANGED", "name", record.Name, "type", record.Type, "content", record.Content)
-			}
-		default:
-			{
-				oldAddr := record.Content
-
-				record.Content = addr
-
-				if !opts.Dryrun {
-					record, err = c.UpdateDNSRecord(ctx, zoneID, record)
-					if err != nil {
-						logger.Error("Failed to update a DNS record", "err", err)
-						os.Exit(1)
-					}
-				}
-
-				logger.Info("UPDATED", "name", record.Name, "type", record.Type, "old", oldAddr, "new", record.Content)
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Info("Shutting down")
+			return
+		case <-ticker.C:
+			if err := syncOnce(ctx, logger, c, i, opts, zoneID, recordName, family); err != nil {
+				logger.Error("Sync failed", "err", err)
 			}
 		}
 	}
