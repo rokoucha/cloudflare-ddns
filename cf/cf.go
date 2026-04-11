@@ -57,7 +57,6 @@ func (c *CF) CreateDNSRecord(ctx context.Context, zoneID string, record *DNSReco
 		Type:    record.Type,
 		Name:    record.Name,
 		Content: record.Content,
-		ZoneID:  zoneID,
 	})
 	if err != nil {
 		return nil, err

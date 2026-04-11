@@ -131,7 +131,6 @@ func main() {
 					Type:    recordType,
 					Name:    recordName,
 					Content: addr,
-					ZoneID:  zoneID,
 				}
 
 				if !opts.Dryrun {
