@@ -10,9 +10,58 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version_tag: ${{ steps.version.outputs.version_tag }}
+    steps:
+      - name: Generate version tag
+        id: version
+        run: echo "version_tag=$(TZ=Asia/Tokyo date +'%Y%m%d.%H%M%S')" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     uses: ./.github/workflows/wf-build.yml
+    with:
+      version_tag: ${{ needs.version.outputs.version_tag }}
 
   build-container:
+    needs: version
     uses: ./.github/workflows/wf-build-container.yml
+    with:
+      version_tag: ${{ needs.version.outputs.version_tag }}
+
+  release:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs:
+      - version
+      - build
+      - build-container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@95815c38cf14ee0e1db257ec2f16f369c7d6955b # v4.2.1
+        with:
+          path: dist
+          pattern: cloudflare-ddns-${{ needs.version.outputs.version_tag }}-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum cloudflare-ddns-* > SHA256SUMS
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ needs.version.outputs.version_tag }}
+        run: |
+          gh release create "$VERSION_TAG" dist/cloudflare-ddns-* dist/SHA256SUMS \
+            --generate-notes \
+            --latest \
+            --target "$GITHUB_SHA" \
+            --title "$VERSION_TAG"

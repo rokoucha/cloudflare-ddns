@@ -8,6 +8,10 @@ on:
         type: boolean
         required: false
         default: true
+      version_tag:
+        description: Release version tag used for image tags
+        type: string
+        required: false
   workflow_call:
     inputs:
       push:
@@ -15,6 +19,11 @@ on:
         type: boolean
         required: false
         default: true
+      version_tag:
+        description: Release version tag used for image tags
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -45,7 +54,7 @@ jobs:
           images: ghcr.io/rokoucha/cloudflare-ddns
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value={{date 'YYYYMMDD.HHmmss' tz='Asia/Tokyo'}},enable={{is_default_branch}}
+            type=raw,value=${{ inputs.version_tag }},enable=${{ inputs.version_tag != '' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=ref,event=pr
             type=sha
 
