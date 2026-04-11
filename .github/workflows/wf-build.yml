@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: Push built images to registry
+        type: boolean
+        required: false
+        default: true
+  workflow_call:
+    inputs:
+      push:
+        description: Push built images to registry
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        GOARCH: ["amd64", "arm64", "arm"]
+        GOOS: ["darwin", "linux"]
+        exclude:
+          - GOARCH: amd64
+            GOOS: darwin
+          - GOARCH: arm
+            GOOS: darwin
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@v6.4.0
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build
+        run: go build -o ./cloudflare-ddns$X
+        env:
+          GOARCH: ${{ matrix.GOARCH }}
+          GOOS: ${{ matrix.GOOS }}
+
+      - name: Upload build result
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: cloudflare-ddns-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
+          path: cloudflare-ddns

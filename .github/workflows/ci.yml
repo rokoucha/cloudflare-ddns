@@ -8,12 +8,11 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6.4.0
         with:
-          go-version-file: 'go.mod'
+          go-version-file: go.mod
 
       - name: Install dependencies
         run: go mod download
@@ -23,76 +22,3 @@ jobs:
 
       - name: Test
         run: go test -v
-
-  build:
-    runs-on: ubuntu-22.04
-    needs: check
-    if: ${{ github.ref_name == 'master' }}
-    strategy:
-      matrix:
-        GOARCH: ["amd64", "arm64", "arm"]
-        GOOS: ["darwin", "linux", "windows"]
-        include:
-          - GOOS: windows
-            X: .exe
-        exclude: 
-          - GOARCH: arm
-            GOOS: windows
-          - GOARCH: arm
-            GOOS: darwin
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Build
-        run: go build -o ./cloudflare-ddns$X
-        env:
-          GOARCH: ${{ matrix.GOARCH }}
-          GOOS: ${{ matrix.GOOS }}
-          X: ${{ matrix.X }}
-
-      - name: Upload build result
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloudflare-ddns-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
-          path: cloudflare-ddns${{ matrix.X }}
-
-  build-docker-image:
-    runs-on: ubuntu-22.04
-    needs: check
-    if: ${{ github.ref_name == 'master' }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & Push
-        uses: docker/build-push-action@v5
-        with:
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ghcr.io/rokoucha/cloudflare-ddns:latest
