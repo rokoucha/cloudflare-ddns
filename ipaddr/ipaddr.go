@@ -73,6 +73,9 @@ func (i *IPAddr) GetIfAddresses() ([]*Address, error) {
 		for _, a := range addrs {
 			if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 				if ipnet.IP.To4() != nil {
+					if ipnet.IP.IsLinkLocalUnicast() {
+						continue
+					}
 					ad := &Address{
 						Address:   ipnet.IP.String(),
 						Interface: in.Name,
