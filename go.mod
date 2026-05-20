@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/cloudflare/cloudflare-go v0.116.0
+	github.com/cloudflare/cloudflare-go/v7 v7.3.0
 	github.com/jessevdk/go-flags v1.6.1
 	golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
 )
