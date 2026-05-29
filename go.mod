@@ -6,7 +6,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.117.0
 	github.com/cloudflare/cloudflare-go/v7 v7.3.0
 	github.com/jessevdk/go-flags v1.6.1
-	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
+	golang.org/x/exp v0.0.0-20260528193900-50dc527dd6c7
 )
 
 require (
