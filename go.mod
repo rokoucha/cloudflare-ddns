@@ -1,11 +1,11 @@
 module github.com/rokoucha/cloudflare-ddns
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/cloudflare/cloudflare-go v0.117.0
 	github.com/jessevdk/go-flags v1.6.1
-	golang.org/x/exp v0.0.0-20260820122028-d6e0b57b1a69
+	golang.org/x/exp v0.0.0-20260820142414-ca536658362e
 )
 
 require (
