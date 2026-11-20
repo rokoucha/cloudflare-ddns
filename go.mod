@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/cloudflare/cloudflare-go v0.119.0
 	github.com/jessevdk/go-flags v1.6.1
-	golang.org/x/exp v0.0.0-20261120130654-b6de8d37927a
+	golang.org/x/exp v0.0.0-20261120182113-8801fbdfac81
 )
 
 require (
